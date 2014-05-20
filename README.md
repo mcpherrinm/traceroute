@@ -60,7 +60,7 @@ A quick search of the Rust documentation for ttl reveals the [set_ttl] method
 on a [UdpSocket].  There's a sample program in its documentation, so I'll
 start by modifying it.
 
-	sample-send-udp.rs
+[sample-send-udp.rs](sample-send-udp.rs)
 
 You can use tcpdump to see that this program sends packets and gets ICMP time
 exceeded replies from the routers along the path.  Trying to use tcpdump to
@@ -96,7 +96,7 @@ run the previous sample to see all the replies come in.  While we can't easily
 understand the responses yet, you should be able to pick out the involved IP
 addresses from the bytes.
 
-[ICMP sample](sample-receive-icmp.rs)
+[sample-receive-icmp.rs](sample-receive-icmp.rs)
 
 
 Understanding ICMP responses
