@@ -96,7 +96,7 @@ run the previous sample to see all the replies come in.  While we can't easily
 understand the responses yet, you should be able to pick out the involved IP
 addresses from the bytes.
 
-	[ICMP sample](sample-receive-icmp.rs)
+[ICMP sample](sample-receive-icmp.rs)
 
 
 Understanding ICMP responses
