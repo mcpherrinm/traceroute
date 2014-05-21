@@ -99,8 +99,24 @@ addresses from the bytes.
 [sample-receive-icmp.rs](sample-receive-icmp.rs)
 
 
+
 Understanding ICMP responses
 ----------------------------
 
 Now that we're getting the ICMP responses, we need parse their contents so we
-can filter out unexpected ones and print them in the appropriate order. 
+can filter out unexpected ones and print them in the appropriate order.  We'll
+grab the bytes from two different kinds of ICMP messages recieved in the
+previous small program: One TTL expired, and one port unreachable.  We should
+be able to parse both pretty quickly.
+
+Skimming [RFC 792](http://tools.ietf.org/html/rfc792) for their pretty ASCII
+pictures of the ICMP header formats, it looks like it the format is very
+simple, and based around easy power-of-two sized fields.  This sort of stuff is
+really conveniently parsed with Rust's Reader trait.  Since we've got the data
+to parse in memory, we'll wrap it in a BufReader and start sucking out our
+data!
+
+First, we can parse out the IP header.  Technically, if the header includes
+options, it isn't fixed length, but since this is just a little sample program
+we ignore this case and just check the header length is 5 words.  We'll make
+sure the protocol is ICMP, and grab the source IP address too.
