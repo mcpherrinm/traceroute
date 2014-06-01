@@ -103,11 +103,9 @@ addresses from the bytes.
 Understanding ICMP responses
 ----------------------------
 
-Now that we're getting the ICMP responses, we need parse their contents so we
-can filter out unexpected ones and print them in the appropriate order.  We'll
-grab the bytes from two different kinds of ICMP messages recieved in the
-previous small program: One TTL expired, and one port unreachable.  We should
-be able to parse both pretty quickly.
+We're getting some bytes in a buffer in our ICMP receive sample, so let's try
+to make sure they look vaguely sane.  We can copy and paste a few samples into
+a text file and get the basic data out of them.
 
 Skimming [RFC 792](http://tools.ietf.org/html/rfc792) for their pretty ASCII
 pictures of the ICMP header formats, it looks like it the format is very
@@ -120,3 +118,7 @@ First, we can parse out the IP header.  Technically, if the header includes
 options, it isn't fixed length, but since this is just a little sample program
 we ignore this case and just check the header length is 5 words.  We'll make
 sure the protocol is ICMP, and grab the source IP address too.
+
+Then we'll grab the type out of the ICMP, and the TTL from the original IP
+header.  For now we won't bother with nice output, and will just print them
+in the order they arrive, which should be good enough.
