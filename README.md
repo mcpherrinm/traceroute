@@ -122,3 +122,20 @@ sure the protocol is ICMP, and grab the source IP address too.
 Then we'll grab the type out of the ICMP, and the TTL from the original IP
 header.  For now we won't bother with nice output, and will just print them
 in the order they arrive, which should be good enough.
+
+[sample-parse-icmp.rs](sample-parse-icmp.rs)
+
+
+Librarification of packet parsing
+---------------------------------
+
+Now we've got all the ingredients, we can put together the basic traceroute
+program.  We'll start with taking the minimal ICMP parser sample and making it
+into something usable as a library.  It'll consist of functions that pull
+each header out of a stream you pass in.
+
+The headers in the response payload may be truncated, but we don't need really
+need to handle that: all the responses we get back should at least have the IP
+and UDP headers intact.  But we should do proper error checking.
+
+[packet.rs](packet.rs)
