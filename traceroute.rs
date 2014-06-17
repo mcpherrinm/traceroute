@@ -4,14 +4,13 @@ use std::io::BufReader;
 use std::io::net::udp::UdpSocket;
 use std::io::net::ip::{IpAddr, Ipv4Addr, SocketAddr};
 use libc::{c_int, c_void, socket, AF_INET, sockaddr_storage};
-use native::io::net::sockaddr_to_addr;
 
 mod packet;
 
 static SOCK_RAW: c_int = 3;
 static IPPROTO_ICMP: c_int = 1;
 
-fn recvfrom<'buf>(sock: c_int, buf: &'buf mut [u8]) -> (&'buf mut [u8], SocketAddr) {
+fn recvfrom<'buf>(sock: c_int, buf: &'buf mut [u8]) -> &'buf mut [u8] {
   let mut storage: sockaddr_storage = unsafe { std::mem::zeroed() };
   let storagep = &mut storage as *mut _ as *mut libc::sockaddr;
   let mut addrlen = std::mem::size_of::<libc::sockaddr_storage>() as libc::socklen_t;
@@ -21,8 +20,7 @@ fn recvfrom<'buf>(sock: c_int, buf: &'buf mut [u8]) -> (&'buf mut [u8], SocketAd
                  buf.len() as u64, 
                  0, storagep, &mut addrlen) };
 
-  (buf.mut_slice_to(bytes as uint),
-   sockaddr_to_addr(&storage, addrlen as uint).unwrap())
+  buf.mut_slice_to(bytes as uint)
 }
 
 /*fn print_ip(reader: &mut Reader) {
@@ -65,38 +63,35 @@ fn main() {
     }
   });
 
-  let mut bufferator = [0, ..4096];
+  let mut buffer = [0, ..4096];
   let mut responses: Vec<Option<Hop>> = Vec::new();
   for _ in range(0, 30) {
     responses.push(None);
   }
   loop {
-    let (buf, _) = recvfrom(handle, bufferator.as_mut_slice());
+    let buf = recvfrom(handle, buffer.as_mut_slice());
     let reader = &mut BufReader::new(buf) as &mut Reader;
-    let ip = packet::parse_ip(reader);
-    match ip { Err(_) => continue, _ => () };
-    let ip = ip.ok().unwrap();
-    if ip.protocol != 1 { continue; }; // icmp
-    let icmp = packet::parse_icmp(reader);
-    match icmp { Err(_) => continue, _ => () };
-    let icmp = icmp.ok().unwrap();
+
+    let ip = match packet::parse_ip(reader) {
+      Ok(ip) if ip.protocol == 1 => ip,
+      _ => continue,
+    };
+
+    let icmp = match packet::parse_icmp(reader) {
+      Ok(icmp) => icmp, _ => continue };
+
     match icmp.icmp_type {
       11 => { // TTL exceeded
-        let innerip = packet::parse_ip(reader);
-        match innerip { Err(_) => continue, _ => () };
-        innerip.ok().unwrap(); // verify this is actually from me
-        let udp = packet::parse_udp(reader);
-        match udp { Err(_) => continue, _ => () };
-        let udp = udp.ok().unwrap();
+        // XXX Need to do more validation the packet here is from this.
+        if !packet::parse_ip(reader).is_ok() { continue }
+        let udp = match packet::parse_udp(reader) {
+          Ok(udp) => udp, _ => continue };
         let ttl = udp.dstport;
-        {
-        let entry = responses.get_mut(ttl as uint);
-        *entry = Some( Hop { ip: ip.src, time: 0 } );
-        }
+        *responses.get_mut(ttl as uint) = Some( Hop { ip: ip.src, time: 0 } );
         for i in responses.iter() {
           match *i {
             Some(hop) => println!("{} {} {} {}", hop.ip, hop.time, '*', '*'),
-            None => println!("-"),
+            None => (), //println!("-"),
           }
         }
       },
