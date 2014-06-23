@@ -41,6 +41,22 @@ struct Hop {
 }
 
 #[allow(experimental)]
+// Need experimental to set_tll, which is key for this to work.
+fn send_trace(ip: IpAddr, seed: u64) {
+  let addr = SocketAddr { ip: Ipv4Addr(0, 0, 0, 0), port: seed as u16};
+  let mut dest = SocketAddr { ip: ip, port: 12345 };
+  let mut socket = UdpSocket::bind(addr).unwrap();
+
+  let mut buf = [1,2,3,4,5,6,7,8];
+  for ttl in range(1, 30) {
+    socket.set_ttl(ttl).unwrap();
+    dest.port = ttl as u16;
+    buf[0] = ttl as u8;
+    socket.sendto(buf, dest).unwrap();
+    // Probably want to put the time in the buffer here.
+  }
+}
+
 fn main() {
   let handle = unsafe { socket(AF_INET, SOCK_RAW, IPPROTO_ICMP) };
   if handle < 0 {
@@ -48,20 +64,7 @@ fn main() {
     return;
   }
 
-  spawn(proc() {
-    let addr = SocketAddr { ip: Ipv4Addr(0, 0,  0, 0), port: 12345 };
-    let mut dest = SocketAddr { ip: Ipv4Addr(8,8,8,8), port: 12345 };
-    let mut socket = UdpSocket::bind(addr).unwrap();
-
-    let mut buf = [1,2,3,4,5,6,7,8];
-    for ttl in range(1, 30) {
-      socket.set_ttl(ttl).unwrap();
-      dest.port = ttl as u16;
-      buf[0] = ttl as u8;
-      socket.sendto(buf, dest).unwrap();
-      // Probably want to put the time in the buffer here.
-    }
-  });
+  spawn( proc() {send_trace(Ipv4Addr(8,8,8,8), 12345)} );
 
   let mut buffer = [0, ..4096];
   let mut responses: Vec<Option<Hop>> = Vec::new();
