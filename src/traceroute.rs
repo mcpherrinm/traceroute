@@ -3,23 +3,6 @@ extern crate native;
 extern crate packet;
 use std::io::net::udp::UdpSocket;
 use std::io::net::ip::{IpAddr, Ipv4Addr, SocketAddr};
-use libc::{c_int, c_void, socket, AF_INET, sockaddr_storage};
-
-static SOCK_RAW: c_int = 3;
-static IPPROTO_ICMP: c_int = 1;
-
-fn recvfrom<'buf>(sock: c_int, buf: &'buf mut [u8]) -> &'buf mut [u8] {
-  let mut storage: sockaddr_storage = unsafe { std::mem::zeroed() };
-  let storagep = &mut storage as *mut _ as *mut libc::sockaddr;
-  let mut addrlen = std::mem::size_of::<libc::sockaddr_storage>() as libc::socklen_t;
-
-  let bytes = unsafe { libc::recvfrom(sock,
-                 buf.as_mut_ptr() as *mut c_void,
-                 buf.len() as u64, 
-                 0, storagep, &mut addrlen) };
-
-  buf.mut_slice_to(bytes as uint)
-}
 
 /*fn print_ip(reader: &mut Reader) {
   let iphdr = packet::parse_ip(reader).unwrap();
@@ -56,11 +39,7 @@ fn send_trace(ip: IpAddr, seed: u64) {
 }
 
 fn main() {
-  let handle = unsafe { socket(AF_INET, SOCK_RAW, IPPROTO_ICMP) };
-  if handle < 0 {
-    println!("{}, could't open handle. root?", handle);
-    return;
-  }
+  let socket = packet::rawsocket::RawSocket::icmp_sock().unwrap();
 
   spawn( proc() {send_trace(Ipv4Addr(8,8,8,8), 12345)} );
 
@@ -70,7 +49,7 @@ fn main() {
     responses.push(None);
   }
   loop {
-    let buf = recvfrom(handle, buffer.as_mut_slice());
+    let buf = socket.recvfrom(buffer.as_mut_slice());
     let ip = packet::Ip::new(buf);
     println!("Snarfed IP:");
     ip.print();
