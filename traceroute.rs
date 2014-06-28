@@ -1,6 +1,5 @@
 extern crate libc;
 extern crate native;
-use std::io::BufReader;
 use std::io::net::udp::UdpSocket;
 use std::io::net::ip::{IpAddr, Ipv4Addr, SocketAddr};
 use libc::{c_int, c_void, socket, AF_INET, sockaddr_storage};
@@ -73,30 +72,29 @@ fn main() {
   }
   loop {
     let buf = recvfrom(handle, buffer.as_mut_slice());
-    let reader = &mut BufReader::new(buf) as &mut Reader;
+    let ip = packet::Ip::new(buf);
+    println!("Snarfed IP:");
+    ip.print();
+    if (ip.version(), ip.protocol()) != (4, 1) { continue };
 
-    let ip = match packet::parse_ip(reader) {
-      Ok(ip) if ip.protocol == 1 => ip,
-      _ => continue,
-    };
+    let icmp = packet::Icmp::new(ip.payload());
+    icmp.print();
 
-    let icmp = match packet::parse_icmp(reader) {
-      Ok(icmp) => icmp, _ => continue };
-
-    match icmp.icmp_type {
+    match icmp.icmp_type() {
       11 => { // TTL exceeded
-        // XXX Need to do more validation the packet here is from this.
-        if !packet::parse_ip(reader).is_ok() { continue }
-        let udp = match packet::parse_udp(reader) {
-          Ok(udp) => udp, _ => continue };
-        let ttl = udp.dstport;
-        *responses.get_mut(ttl as uint) = Some( Hop { ip: ip.src, time: 0 } );
+        let innerip = packet::Ip::new(icmp.payload());
+        innerip.print();
+        let udp = packet::Udp::new(innerip.payload());
+        udp.print();
+        let ttl = udp.dstport();
+        *responses.get_mut(ttl as uint) = Some( Hop { ip: ip.source(), time: 0 } );
         for i in responses.iter() {
           match *i {
             Some(hop) => println!("{} {} {} {}", hop.ip, hop.time, '*', '*'),
             None => (), //println!("-"),
           }
         }
+        println!("-");
       },
       _ => continue,
     }
