@@ -1,10 +1,9 @@
 extern crate libc;
 extern crate native;
+extern crate packet;
 use std::io::net::udp::UdpSocket;
 use std::io::net::ip::{IpAddr, Ipv4Addr, SocketAddr};
 use libc::{c_int, c_void, socket, AF_INET, sockaddr_storage};
-
-mod packet;
 
 static SOCK_RAW: c_int = 3;
 static IPPROTO_ICMP: c_int = 1;

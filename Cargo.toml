@@ -1,0 +1,10 @@
+[package]
+name="traceroute"
+version="0.0.1"
+authors=["matt@mcpherrin.ca"]
+
+[[bin]]
+name="traceroute"
+
+[dependencies.packet]
+git="http://github.com/mcpherrinm/packet.git"
