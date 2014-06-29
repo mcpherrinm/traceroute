@@ -1,80 +1,68 @@
-extern crate libc;
-extern crate native;
 extern crate packet;
-use std::io::net::udp::UdpSocket;
 use std::io::net::ip::{IpAddr, Ipv4Addr, SocketAddr};
+use std::io::net::udp::UdpSocket;
 
-/*fn print_ip(reader: &mut Reader) {
-  let iphdr = packet::parse_ip(reader).unwrap();
-  println!("header: src {} dst {} ttl {}", iphdr.src, iphdr.dst, iphdr.ttl);
-  match iphdr.protocol {
-    1 => print_icmp(reader),
-    4 => print_ip(reader),
-    //6 => print_tcp(reader),
-    17 => print_udp(reader),
-    x => println!("unknown protocol {}", x),
-  }
-}*/
-
-struct Hop {
-  ip: IpAddr,
+pub struct Hop {
   time: uint,
+  where: IpAddr,
 }
 
-#[allow(experimental)]
-// Need experimental to set_tll, which is key for this to work.
-fn send_trace(ip: IpAddr, seed: u64) {
-  let addr = SocketAddr { ip: Ipv4Addr(0, 0, 0, 0), port: seed as u16};
-  let mut dest = SocketAddr { ip: ip, port: 12345 };
-  let mut socket = UdpSocket::bind(addr).unwrap();
-
-  let mut buf = [1,2,3,4,5,6,7,8];
-  for ttl in range(1, 30) {
-    socket.set_ttl(ttl).unwrap();
-    dest.port = ttl as u16;
-    buf[0] = ttl as u8;
-    socket.sendto(buf, dest).unwrap();
-    // Probably want to put the time in the buffer here.
-  }
+pub struct TraceRequest {
+  /// The number of packets we want to send to each host along the way.
+  tries: uint,
+  /// How far away we're going to look
+  hop_limit: uint,
+  destination: IpAddr,
+  // Todo: progress callback.  For now, hardcode printing?
 }
 
-fn main() {
-  let socket = packet::rawsocket::RawSocket::icmp_sock().unwrap();
+impl Send for TraceRequest {}
 
-  spawn( proc() {send_trace(Ipv4Addr(8,8,8,8), 12345)} );
+impl TraceRequest {
+  /// Runs the traceroute, sending in a new task and receiving in
+  /// this one.
+  pub fn run(&self) -> Vec<Vec<Hop>> {
+    // Start listeclone().ning on a socket first:
+    let listener = packet::rawsocket::RawSocket::icmp_sock().unwrap();
 
-  let mut buffer = [0, ..4096];
-  let mut responses: Vec<Option<Hop>> = Vec::new();
-  for _ in range(0, 30) {
-    responses.push(None);
-  }
-  loop {
-    let buf = socket.recvfrom(buffer.as_mut_slice());
-    let ip = packet::Ip::new(buf);
-    println!("Snarfed IP:");
-    ip.print();
-    if (ip.version(), ip.protocol()) != (4, 1) { continue };
+    let sender = *self.clone();
+    std::task::spawn(proc() { sender.send_all_probes() });
 
-    let icmp = packet::Icmp::new(ip.payload());
-    icmp.print();
-
-    match icmp.icmp_type() {
-      11 => { // TTL exceeded
-        let innerip = packet::Ip::new(icmp.payload());
-        innerip.print();
-        let udp = packet::Udp::new(innerip.payload());
-        udp.print();
-        let ttl = udp.dstport();
-        *responses.get_mut(ttl as uint) = Some( Hop { ip: ip.source(), time: 0 } );
-        for i in responses.iter() {
-          match *i {
-            Some(hop) => println!("{} {} {} {}", hop.ip, hop.time, '*', '*'),
-            None => (), //println!("-"),
-          }
-        }
-        println!("-");
-      },
-      _ => continue,
+    let mut buf = [8, ..9200];
+    loop {
+      let pkt = listener.recvfrom(buf.as_mut_slice());
     }
+
+
+   Vec::new()
+  }
+
+  // Syncronously send all the probes
+  #[allow(experimental)]
+  fn send_all_probes(&self) {
+    let addr = SocketAddr { ip: Ipv4Addr(0, 0, 0, 0), port: 12345};
+    let mut dest = SocketAddr { ip: self.destination, port: 12345};
+    let mut socket = UdpSocket::bind(addr).unwrap();
+
+    let mut buf = [1,2,3,4,5,6,7,8];
+    for ttl in range(1, self.hop_limit) {
+      for _ in range(0, self.tries) {
+        socket.set_ttl(ttl as int).unwrap();
+        dest.port = ttl as u16;
+        buf[0] = ttl as u8;
+        socket.sendto(buf, dest).unwrap();
+        // Probably want to put the time in the buffer here.
+      }
+    }
+  }
+}
+
+pub struct TraceResponsePkt<'a> {
+  buf: &'a [u8]
+}
+
+impl<'b> TraceResponsePkt<'b> {
+  fn new<'a>(buf: &'a [u8]) -> Option<TraceResponsePkt<'a>> {
+    Some(TraceResponsePkt{buf: buf})
   }
 }

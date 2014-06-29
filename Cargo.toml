@@ -3,8 +3,12 @@ name="traceroute"
 version="0.0.1"
 authors=["matt@mcpherrin.ca"]
 
-[[bin]]
+[[lib]]
 name="traceroute"
+
+[[bin]]
+name="simple-traceroute"
 
 [dependencies.packet]
 git="http://github.com/mcpherrinm/packet.git"
+
