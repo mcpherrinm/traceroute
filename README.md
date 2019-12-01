@@ -1,6 +1,15 @@
 Writing Traceroute (In Rust!)
 =============================
 
+Note
+----
+
+This was written Pre-Rust-1.0.  I am currently working on modernizing it.
+
+
+Old Post
+--------
+
 I thought writing my own Traceroute might be a fun little project to do one
 afternoon.  While I understand the idea behind it, I have never tried to
 implement it and thought it to be a worthwhile exercise.  Since I think I know
@@ -50,6 +59,13 @@ TTL, so that seems like a reasonable place to start sending.  To recieve the
 ICMP replies, I'll need a raw socket, which Rust doesn't have standard library
 support for, so I'll write a little wrapper library around the Linux Socket
 functions.
+
+TODO:  This previously used raw sockets to receive, but we can do better than
+that.  Instead of a raw socket, we can use setsockopt with `IP_RECVERR` to get
+errors.  Then we can use the CMSG apis to get the ICMP results.
+
+TODO:  With `PROT_ICMP`, we can send ICMP echo unpriv.  This may be permitted
+where UDP is not.  https://lwn.net/Articles/443051/
 
 
 Sending some packets
